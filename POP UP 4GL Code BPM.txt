@@ -1,0 +1,21 @@
+Exception
+
+
+		if not available joboper then do:
+			
+			{lib\publishex.i 
+				&exmsg = "'There are no Operations, cannot Release'"
+			} /* {&THROW_PUBLIC}. */
+			
+		end.
+
+Infor
+
+	if not available joboper then {lib\publishinfomsg.i &infomsg = "'No Operations associated with this method'"}.
+
+
+
+
+if reason.ReasonType = "H" then do:
+{lib\publishinfomsg.i &infomsg = "'This part is on hold for ' + string(reason.description)"}.
+end.

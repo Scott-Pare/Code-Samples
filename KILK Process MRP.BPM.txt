@@ -1,0 +1,40 @@
+DISABLE TRIGGERS FOR LOAD OF Part.
+FOR EACH ttPartRev NO-LOCK WHERE 
+	ttPartrev.company = cur-comp and
+	ttpartrev.RowMod = 'u'.
+	
+	if ttPartRev.Approved = FALSE then do:
+			/* Part Rev is unapproved */
+
+			Find First PartPlant where
+				PartPlant.Company = ttpartrev.Company and
+				PartPlant.PartNum = ttPartRev.PartNum and
+				PartPlant.Plant = '03'.
+
+				If Avail PartPlant then do:
+					/* Found Part Plant Record in KILK */
+					/* Set MRP TRUE */
+					Assign PartPlant.ProcessMRP = TRUE.
+
+				End.
+
+			End.
+
+	if ttPartRev.Approved = TRUE then do:
+			/* Part Rev is APPROVED */
+
+			Find First PartPlant where
+				PartPlant.Company = ttpartrev.Company and
+				PartPlant.PartNum = ttPartRev.PartNum and
+				PartPlant.Plant = '03'.
+
+				If Avail PartPlant then do:
+					/* Found Part Plant Record in KILK */
+					/* Set MRP TRUE */
+					Assign PartPlant.ProcessMRP = FALSE.
+
+				End.
+
+			End.
+
+End.

@@ -1,0 +1,25 @@
+DEF VAR AllowedClassIDs as character initial "CFE,DF,FBV,FM,GLUE,HS,LB,LF,RF,RM,THRD".
+def var BurnComplete as logical initial true.
+def var Msg as character initial "123 The following materials on this job have not been tested:".
+
+for each JobMtl no-lock  where JobMtl.Company = Cur-Comp and pcJobNum = JobMtl.JobNum and JobMtl.AssemblySeq = JobMtl.AssemblySeq,
+					each part no-lock where part.Company = JobMtl.Company and part.PartNum=jobmtl.PartNum :
+				if Lookup(Part.ClassID, AllowedClassIDs) = 0 then next.
+				def var FoundMtlBurn as logical initial false.
+				ASSIGN FoundMtlBurn = false.
+				/*Search for a burn for this material. If we find one then indicate we found one*/
+				for each UD02 NO-LOCK WHERE UD02.Company=JobMtl.Company and 
+																		UD02.Key1=JobMtl.JobNum and 
+																		UD02.Key2=JobMtl.PartNum and 
+																		UD02.Key3=UD02.Key3 and 
+																		UD02.Key4=UD02.Key4 and 
+																		UD02.Key5=UD02.Key5:
+					ASSIGN FoundMtlBurn = true.
+				end.
+				/*If no material found then burn is incomplete and make note of the material missing*/
+				if FoundMtlBurn = false then assign BurnComplete = false
+																						msg = msg + "~n" + "     " + JobMtl.PartNum .
+
+END.
+
+if not BurnComplete then {lib/PublishEx.i &ExMsg = "msg"}.

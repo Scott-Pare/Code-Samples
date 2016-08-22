@@ -1,0 +1,86 @@
+DEF VAR PlantID	AS CHARACTER NO-UNDO.
+DEF VAR WHCode 	AS CHARACTER NO-UNDO.
+DEF VAR Complete AS LOGICAL NO-UNDO.
+
+Complete = False.
+
+FOR EACH ttOrderRel WHERE ttOrderRel.RowMod <> '':
+	FIND FIRST OrderHed WHERE OrderHed.Company = ttOrderRel.Company AND OrderHed.OrderNum = ttOrderRel.OrderNum.
+	FIND FIRST Customer WHERE Customer.Company = Orderhed.Company AND Customer.CustNum = OrderHed.CustNum.
+
+	/* BE Kilkeel */
+	IF Customer.CustID = "BEKILK" THEN DO:
+	  Complete = True.
+		PlantID	= "03".
+		WHCode	 = "Kilk".
+	END.
+
+	/* TDI */
+	IF Customer.CustID = "TDI" THEN DO:
+	  Complete = True.
+		PlantID	= "MfgSys".
+		WHCode	 = "Shp".
+	END.
+
+	/* Weber / Recaro */
+	If Complete = FALSE THEN DO:
+	  IF Customer.CustID = "ZSUS" OR Customer.CustID = "RECATX" OR Customer.CustID = "ZSUSSPARES" Then DO:
+			Complete = TRUE.
+			PlantID	= "05".
+			WHCode	 = "Dal".
+	  END.
+	END.
+	
+
+	/* BE Winston Salesm */
+	/* Commented out temporarily
+
+	If Complete = FALSE THEN DO:
+	  IF Customer.CustID = "BE/OAK" OR Customer.CustID = "BE/EMP" OR Customer.CustID = "BE/FAIR" THEN DO:
+			Complete = TRUE.
+			PlantID	= "04".
+			WHCode	 = "WS".
+	  END.
+	END.
+
+*/
+
+	/* Everyone else */
+	IF Complete = FALSE THEN DO:
+	  FOR FIRST Partrev WHERE Partrev.Company = ttOrderRel.Company AND Partrev.PartNum=ttOrderRel.PartNum AND PartRev.RevisionNum = ttOrderRel.RevisionNum:
+			Complete = TRUE.
+	    PlantID	= Partrev.Plant.
+			FOR FIRST PartPlant WHERE PartPlant.Company = ttOrderRel.Company AND PartPlant.PartNum = ttOrderRel.PartNum AND PartPlant.Plant = PartRev.Plant:
+				WHCode = PartPlant.PrimWhse.
+			END.
+	  END.
+	END.
+	
+	/* if Mexico then Dallas */
+	IF PlantID = "06" THEN DO:
+		Complete = TRUE.
+		PlantID	= "05".
+		WHCode	 = "Dal".
+	END.
+	
+	/* Mark new record as 'auto plant' */
+	IF ttOrderRel.RowMod = 'A' THEN ttOrderRel.CheckBox10 = TRUE.
+	
+	/* Update Release */
+	IF ttOrderRel.CheckBox10 THEN DO:
+		IF PlantID <> "" AND WHCode <> "" THEN DO:
+			ttOrderRel.Plant 				= PlantID.
+			ttOrderRel.WarehouseCode = WHCode.	
+		END.
+		/* Update PartDtl infor for TimePhase. */
+		FOR EACH PartDtl WHERE PartDtl.Company = ttOrderRel.Company AND 
+												 PartDtl.OrderNum = ttOrderRel.OrderNum AND 
+												 PartDtl.OrderLine = ttOrderRel.OrderLine AND 
+												 PartDtl.OrderRelNum = ttOrderRel.OrderRelNum:
+		PartDtl.Plant = ttOrderRel.Plant.
+		END.	
+	END.
+	
+	/* Set suggested plant eitherway. */
+	ttOrderRel.Character01 = PlantID.	
+END.
